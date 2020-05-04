@@ -1,23 +1,22 @@
 import os
+from datetime import datetime
 import numpy as np
-from tools import Graph
+import tools
+
 
 # Read in data from text files
-data_folder = "/home/ben/Documents/dataset_transforms"
-
-teach_run = data_folder + "/run_000000/transforms_temporal.txt"
-repeat_runs = []
-for i in range(1, 40):
-    run_file = "{0}/run_{1}/transforms_spatial.txt".format(data_folder, str(i).zfill(6))
-    if os.path.isfile(run_file):
-        repeat_runs.append(run_file)
+data_folder = "/media/benc/1c892fc6-27ff-49a3-9358-ac5addb68219/home/ben/Documents/dataset_transforms"
+teach_run, repeat_runs, timestamps = tools.get_run_files(data_folder)
 
 # Create graph
-in_the_dark = Graph(teach_run, repeat_runs)            # todo deal with timestamps, GPS
+in_the_dark = tools.Graph(teach_run, repeat_runs, timestamps)
+
+# Extract subgraph to work with (optional)
+in_the_dark = in_the_dark.get_subgraph(0, 500)
 
 # Example vertices
-v1 = (0, 12)
-v2 = (4, 25)
+v1 = (0, 67)
+v2 = (4, 62)
 
 if in_the_dark.is_vertex(v1) and in_the_dark.is_vertex(v2):
 
@@ -36,6 +35,8 @@ if in_the_dark.is_vertex(v1) and in_the_dark.is_vertex(v2):
     r = 0.1
     metric_search = in_the_dark.get_metric_neighbours(v1, r)
     print("The following vertices are within {0} metres of vertex {1}: {2}".format(r, v1, metric_search))
+
+    print("Image at vertex {0} was captured at {1} UTC.".format(v2, datetime.utcfromtimestamp(in_the_dark.get_vertex(v2).timestamp)))
 
     # Print T_12
     # print(T.inv())

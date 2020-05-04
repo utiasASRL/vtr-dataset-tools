@@ -1,21 +1,32 @@
+import os
+import copy
 import numpy as np
-from transform2 import Transform
+
+from transform import Transform
 
 
 class Vertex:
-    def __init__(self, run_id, pose_id, next_run_id, next_pose_id, next_transform, teach=False, timestamp=None, prev_run_id=-1, prev_pose_id=-1):
+    def __init__(self, run_id, pose_id, next_run_id, next_pose_id, next_transform, teach=False, prev_run_id=-1,
+                 prev_pose_id=-1, timestamp=None, latitude=None, longitude=None, altitude=None):
         self.vertex_id = (int(run_id), int(pose_id))
         self.next_id = (int(next_run_id), int(next_pose_id))
         self.next_transform = next_transform
         self.prev_id = (int(prev_run_id), int(prev_pose_id))
         self.teach = teach
         self.timestamp = timestamp
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
 
 
 class Graph:
-    def __init__(self, teach_file, repeat_files=None):
+    def __init__(self, teach_file, repeat_files=None, time_files=None, gps_files=None):
         if repeat_files is None:
             repeat_files = []
+        if time_files is None:
+            time_files = {}
+        if gps_files is None:
+            gps_files = {}
 
         # Read teach run transforms from file
         transforms_temporal = np.loadtxt(teach_file, delimiter=",")
@@ -33,6 +44,9 @@ class Graph:
         # If repeat run transforms, add those to graph
         for run_file in repeat_files:
             self.add_run(run_file)
+
+        self.add_timestamps(time_files)
+        self.add_gps(gps_files)
 
     # Return Vertex in the graph with the given id
     def get_vertex(self, vertex_id):
@@ -79,6 +93,38 @@ class Graph:
             transform = Transform(np.array([row[4:7], row[8:11], row[12:15]]), np.array([row[7], row[11], row[15]]))
             self.add_vertex(row[0], row[1], row[2], row[3], transform, False)
 
+    def add_timestamps(self, time_files):
+        for run in time_files:
+            run_times = np.loadtxt(time_files[run], delimiter=",")
+            for row in run_times:
+                if (run, int(row[0])) in self.vertices:
+                    self.vertices[(run, row[0])].timestamp = float(row[1]) * 10**-9
+
+    def add_gps(self, gps_files):
+        for run in gps_files:
+            run_times = np.loadtxt(gps_files[run], delimiter=",")
+            for row in run_times:
+                if (run, row[0]) in self.vertices:
+                    self.vertices[(run, row[0])].latitude = row[1]
+                    self.vertices[(run, row[0])].longitude = row[2]
+                    self.vertices[(run, row[0])].altitude = row[3]
+
+    # Returns a subgraph made from the teach vertices between (teach_id, start) and (teach_id, end)
+    def get_subgraph(self, start, end):
+        if self.is_vertex((self.teach_id, start)) and self.is_vertex((self.teach_id, end)):
+            subgraph = copy.copy(self)
+            subgraph.matches = {id: self.matches[id] for id in self.matches if start <= id[1] <= end}
+
+            subgraph.vertices = {}
+            for m in subgraph.matches:
+                subgraph.vertices.update({m: self.get_vertex(m)})
+                subgraph.vertices.update({repeat_vertex.vertex_id: repeat_vertex for repeat_vertex in subgraph.matches[m]})
+
+            return subgraph
+        else:
+            print("Invalid vertex chosen.")
+            return self
+
     # Returns number of edges between vertices in pose graph
     def get_topological_dist(self, vertex1, vertex2):
         path, _ = self.get_path(vertex1, vertex2)
@@ -93,7 +139,7 @@ class Graph:
 
         if len(path) == 0:
             print("No path found between vertex {0} and vertex {1}.".format(vertex1, vertex2))
-            return transform                                                      # todo: better way of handling errors
+            return transform
         if len(path) == 1:
             return transform
 
@@ -269,3 +315,19 @@ class Graph:
                     neighbours.add(m.vertex_id)
 
         return neighbours
+
+
+def get_run_files(data_folder):
+    teach_run = data_folder + "/run_000000/transforms_temporal.txt"
+    repeat_runs = []
+    timestamps = {}
+    for i in range(1, 200):
+        run_file = "{0}/run_{1}/transforms_spatial.txt".format(data_folder, str(i).zfill(6))
+        if os.path.isfile(run_file):
+            repeat_runs.append(run_file)
+
+            time_file = "{0}/run_{1}/timestamps_images.txt".format(data_folder, str(i).zfill(6))
+            if os.path.isfile(time_file):
+                timestamps[i] = time_file
+
+    return teach_run, repeat_runs, timestamps

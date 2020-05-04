@@ -1,14 +1,6 @@
 import numpy as np
 
 
-# # The hat operator for a vector
-# def hat(vec):
-#     mat = np.array([[0.0,  -vec[2],   vec[1]],
-#         [ vec[2],         0.0,  -vec[0]],
-#         [-vec[1],   vec[0],         0.0]])
-#     return mat;
-
-
 class Transform:
     def __init__(self, C_ba, r_ab_inb):
         self.C_ba = C_ba
@@ -85,55 +77,3 @@ class Transform:
             # Angle is near zero
             return np.zeros((3,))
 
-    # @staticmethod
-    # def hat(v):
-    #     if len(v) == 4: v = v[:3]/v[3]
-    #     skv = np.roll(np.roll(np.diag(v.flatten()), 1, 1), -1, 0)
-    #     return skv - skv.T
-    #     # return np.array([[  0.0,  -v[2],   v[1]],
-    #     #                  [ v[2],    0.0,  -v[0]],
-    #     #                  [-v[1],   v[0],    0.0]])
-    #
-    # @staticmethod
-    # def SO3JacInv(aaxis_ba):
-    #     ## separate the angle/axis
-    #     angle_ba = np.linalg.norm(aaxis_ba)
-    #     axis_ba = aaxis_ba / angle_ba
-    #
-    #     # if its small then return identity
-    #     if angle_ba < 1e-12:
-    #         return np.eye(3,3)
-    #
-    #     halfphi = 0.5*angle_ba
-    #     cotanTerm = halfphi/np.tan(halfphi)
-    #
-    #     ## jacinv = phi/2 * cot(phi/2)eye + (1-phi/2*cot(phi/2))aa^T - phi/2 * a^
-    #     jacinv = np.eye(3,3)*cotanTerm + (1.0 - cotanTerm) * \
-    #              axis_ba*axis_ba.transpose() - halfphi*Transform.hat(axis_ba)
-    #
-    #     return jacinv
-    #
-    # @staticmethod
-    # def LogMap(tf):
-    #     # Get the SO3 inverse jacobian
-    #     jacinv = Transform.SO3JacInv(tf.phi)
-    #     # multiply by translation to get rho
-    #     rho_ba_inb =  np.matmul(jacinv,tf.r_ba_inb.reshape((3,1)))
-    #     # return 6x1 vector
-    #     return np.concatenate((rho_ba_inb.flatten(),tf.phi),axis=0)
-    #
-    # @classmethod
-    # def ExpMap(cls, xi):
-    #     phi_ba = np.linalg.norm(xi[3:])
-    #     if abs(phi_ba) < 1e-9:
-    #         # If angle is very small, return identity rotation with linear offset
-    #         return Transform(np.eye(3), xi[:3])
-    #
-    #     axis = xi[3:]/phi_ba
-    #     sin_term = np.sin(phi_ba)/phi_ba
-    #     cos_term = (1.0 - np.cos(phi_ba))/phi_ba
-    #
-    #     A = cls.hat(axis)
-    #
-    #     J = sin_term * np.eye(3) + (1.0 - sin_term)*np.outer(axis, axis) + cos_term * A
-    #     return Transform(np.eye(3) + phi_ba * A.dot(J), J.dot(xi[:3]))
