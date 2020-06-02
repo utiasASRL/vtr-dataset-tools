@@ -7,26 +7,29 @@ from transform import Transform
 
 class Vertex:
     def __init__(self, run_id, pose_id, next_run_id, next_pose_id, next_transform, teach=False, prev_run_id=-1,
-                 prev_pose_id=-1, timestamp=None, latitude=None, longitude=None, altitude=None):
+                 prev_pose_id=-1, timestamp=None, gps_time=None, latitude=None, longitude=None, altitude=None):
         self.vertex_id = (int(run_id), int(pose_id))
         self.next_id = (int(next_run_id), int(next_pose_id))
         self.next_transform = next_transform
         self.prev_id = (int(prev_run_id), int(prev_pose_id))
         self.teach = teach
         self.timestamp = timestamp
+        self.gps_time = gps_time
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
 
 
 class Graph:
-    def __init__(self, teach_file, repeat_files=None, time_files=None, gps_files=None):
+    def __init__(self, teach_file, repeat_files=None, im_times=None, gps_files=None, gps_times=None):
         if repeat_files is None:
             repeat_files = []
-        if time_files is None:
-            time_files = {}
+        if im_times is None:
+            im_times = {}
         if gps_files is None:
             gps_files = {}
+        if gps_times is None:
+            gps_times = {}
 
         # Read teach run transforms from file
         transforms_temporal = np.loadtxt(teach_file, delimiter=",")
@@ -45,8 +48,8 @@ class Graph:
         for run_file in repeat_files:
             self.add_run(run_file)
 
-        self.add_timestamps(time_files)
-        self.add_gps(gps_files)
+        self.add_timestamps(im_times)
+        self.add_gps(gps_files, gps_times)
 
     # Return Vertex in the graph with the given id
     def get_vertex(self, vertex_id):
@@ -93,6 +96,7 @@ class Graph:
             transform = Transform(np.array([row[4:7], row[8:11], row[12:15]]), np.array([row[7], row[11], row[15]]))
             self.add_vertex(row[0], row[1], row[2], row[3], transform, False)
 
+    # Add image timestamps to each vertex
     def add_timestamps(self, time_files):
         for run in time_files:
             run_times = np.loadtxt(time_files[run], delimiter=",")
@@ -100,14 +104,21 @@ class Graph:
                 if (run, int(row[0])) in self.vertices:
                     self.vertices[(run, row[0])].timestamp = float(row[1]) * 10**-9
 
-    def add_gps(self, gps_files):
+    # Add associated GPS measurement and its timestamp to vertices where available
+    def add_gps(self, gps_files, gps_times):
         for run in gps_files:
             run_times = np.loadtxt(gps_files[run], delimiter=",")
             for row in run_times:
                 if (run, row[0]) in self.vertices:
-                    self.vertices[(run, row[0])].latitude = row[1]
-                    self.vertices[(run, row[0])].longitude = row[2]
-                    self.vertices[(run, row[0])].altitude = row[3]
+                    self.vertices[(run, row[1])].latitude = row[2]
+                    self.vertices[(run, row[1])].longitude = row[3]
+                    self.vertices[(run, row[1])].altitude = row[4]
+
+        for run in gps_times:
+            run_times = np.loadtxt(gps_times[run], delimiter=",")
+            for row in run_times:
+                if (run, int(row[0])) in self.vertices:
+                    self.vertices[(run, row[0])].gps_time = float(row[1]) * 10**-9
 
     # Returns a subgraph made from the teach vertices between (teach_id, start) and (teach_id, end)
     def get_subgraph(self, start, end):
@@ -223,6 +234,7 @@ class Graph:
             print("No path found. Problem with graph.")
             return [], False
 
+    # Returns set of vertices within 'radius' edges of 'vertex'
     def get_topo_neighbours(self, vertex, radius):
 
         if self.get_vertex(vertex) is None:
@@ -260,6 +272,7 @@ class Graph:
 
         return neighbours
 
+    # Returns set of vertices within 'radius' metres of 'vertex'
     def get_metric_neighbours(self, vertex, radius):
 
         if self.get_vertex(vertex) is None:
@@ -320,14 +333,25 @@ class Graph:
 def get_run_files(data_folder):
     teach_run = data_folder + "/run_000000/transforms_temporal.txt"
     repeat_runs = []
-    timestamps = {}
-    for i in range(1, 200):
-        run_file = "{0}/run_{1}/transforms_spatial.txt".format(data_folder, str(i).zfill(6))
-        if os.path.isfile(run_file):
-            repeat_runs.append(run_file)
+    image_timestamps = {}
+    gps_files = {}
+    gps_timestamps = {}
 
-            time_file = "{0}/run_{1}/timestamps_images.txt".format(data_folder, str(i).zfill(6))
-            if os.path.isfile(time_file):
-                timestamps[i] = time_file
+    for i in range(0, 150):
+        image_times = "{0}/run_{1}/timestamps_images.txt".format(data_folder, str(i).zfill(6))
+        if os.path.isfile(image_times):
+            image_timestamps[i] = image_times
 
-    return teach_run, repeat_runs, timestamps
+            run_file = "{0}/run_{1}/transforms_spatial.txt".format(data_folder, str(i).zfill(6))
+            if os.path.isfile(run_file):
+                repeat_runs.append(run_file)
+
+            gps_file = "{0}/run_{1}/gps.txt".format(data_folder, str(i).zfill(6))
+            if os.path.isfile(gps_file):
+                gps_files[i] = gps_file
+
+                gps_times = "{0}/run_{1}/timestamps_gps.txt".format(data_folder, str(i).zfill(6))
+                if os.path.isfile(gps_times):
+                    gps_timestamps[i] = gps_times
+
+    return teach_run, repeat_runs, image_timestamps, gps_files, gps_timestamps

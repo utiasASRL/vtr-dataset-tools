@@ -22,13 +22,6 @@ class Transform:
     def inv(self):
         return Transform(self.C_ba.T, -self.C_ba.T.dot(self.r_ab_inb))
 
-    def adjoint(self):
-        topright = hat(self.r_ab_inb) * self.C_ba
-        adj = np.concatenate((np.concatenate((self.C_ba, topright), axis=1),
-                              np.concatenate((np.zeros((3, 3)), self.C_ba), axis=1)))
-        return adj
-
-
     @property
     def matrix(self):
         rval = np.eye(4)
@@ -76,4 +69,3 @@ class Transform:
         else:
             # Angle is near zero
             return np.zeros((3,))
-

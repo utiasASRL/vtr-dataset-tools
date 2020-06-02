@@ -1,8 +1,10 @@
 This repository contains Python classes and functions for working with the UTIAS In the Dark and UTIAS Multi-Season datasets.
 
 To start, download the teach run folder and as many repeat runs as you would like to work with.
-Change the `data_folder` path to your top-level directory containing the run_000xxx folders.
+Change the `data_folder` path in `example.py` to your top-level directory containing the run_000xxx folders.
 Run the `example.py` script.
+
+Note: your data folder must contain run000000 from one of the two datasets as all other runs have are localized to this run.
 
 ###### Key Tools 
 
