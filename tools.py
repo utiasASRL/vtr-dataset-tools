@@ -1,4 +1,3 @@
-import os
 import copy
 import numpy as np
 
@@ -103,6 +102,8 @@ class Graph:
             for row in run_times:
                 if (run, int(row[0])) in self.vertices:
                     self.vertices[(run, row[0])].timestamp = float(row[1]) * 10**-9
+                else:
+                    print("Warning: attempted to add timestamp for vertex ({0}, {1}) not in graph.".format(run, int(row[0])))
 
     # Add associated GPS measurement and its timestamp to vertices where available
     def add_gps(self, gps_files, gps_times):
@@ -113,6 +114,8 @@ class Graph:
                     self.vertices[(run, row[1])].latitude = row[2]
                     self.vertices[(run, row[1])].longitude = row[3]
                     self.vertices[(run, row[1])].altitude = row[4]
+                else:
+                    print("Warning: attempted to add GPS data for vertex ({0}, {1}) not in graph.".format(run, int(row[1])))
 
         for run in gps_times:
             run_times = np.loadtxt(gps_times[run], delimiter=",")
@@ -329,29 +332,3 @@ class Graph:
 
         return neighbours
 
-
-def get_run_files(data_folder):
-    teach_run = data_folder + "/run_000000/transforms_temporal.txt"
-    repeat_runs = []
-    image_timestamps = {}
-    gps_files = {}
-    gps_timestamps = {}
-
-    for i in range(0, 150):
-        image_times = "{0}/run_{1}/timestamps_images.txt".format(data_folder, str(i).zfill(6))
-        if os.path.isfile(image_times):
-            image_timestamps[i] = image_times
-
-            run_file = "{0}/run_{1}/transforms_spatial.txt".format(data_folder, str(i).zfill(6))
-            if os.path.isfile(run_file):
-                repeat_runs.append(run_file)
-
-            gps_file = "{0}/run_{1}/gps.txt".format(data_folder, str(i).zfill(6))
-            if os.path.isfile(gps_file):
-                gps_files[i] = gps_file
-
-                gps_times = "{0}/run_{1}/timestamps_gps.txt".format(data_folder, str(i).zfill(6))
-                if os.path.isfile(gps_times):
-                    gps_timestamps[i] = gps_times
-
-    return teach_run, repeat_runs, image_timestamps, gps_files, gps_timestamps
