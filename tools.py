@@ -140,19 +140,19 @@ class Graph:
             return self
 
     # Returns number of edges between vertices in pose graph
-    def get_topological_dist(self, vertex1, vertex2):
-        path, _ = self.get_path(vertex1, vertex2)
+    def get_topological_dist(self, vertex_id1, vertex_id2):
+        path, _ = self.get_path(vertex_id1, vertex_id2)
         return len(path) - 1
 
     # Returns Transform, T_21
-    def get_transform(self, vertex1, vertex2):
+    def get_transform(self, vertex_id1, vertex_id2):
 
         transform = Transform(np.eye(3), np.zeros((3,)))
 
-        path, forward = self.get_path(vertex1, vertex2)
+        path, forward = self.get_path(vertex_id1, vertex_id2)
 
         if len(path) == 0:
-            print("No path found between vertex {0} and vertex {1}.".format(vertex1, vertex2))
+            print("No path found between vertex {0} and vertex {1}.".format(vertex_id1, vertex_id2))
             return transform
         if len(path) == 1:
             return transform
@@ -178,9 +178,9 @@ class Graph:
 
     # Returns list of vertices connecting vertex 1 and vertex2
     # Traverses graph both ways and returns shorter path (topologically)
-    def get_path(self, vertex1, vertex2):
+    def get_path(self, vertex_id1, vertex_id2):
 
-        if self.get_vertex(vertex1) is None or self.get_vertex(vertex2) is None:
+        if self.get_vertex(vertex_id1) is None or self.get_vertex(vertex_id2) is None:
             print("Invalid vertex.")
             return [], False
 
@@ -188,15 +188,15 @@ class Graph:
         forward_valid = True
         backward_valid = True
 
-        forward_path = [vertex1]
+        forward_path = [vertex_id1]
 
         # Check if vertex are the same
-        if vertex1 == vertex2:
+        if vertex_id1 == vertex_id2:
             return forward_path, True
 
         # Follow chain of vertices from vertex 1 to vertex 2
-        start = self.get_vertex(vertex1)
-        goal = self.get_vertex(vertex2)
+        start = self.get_vertex(vertex_id1)
+        goal = self.get_vertex(vertex_id2)
         if not goal.teach:
             goal = self.get_vertex(goal.next_id)
         while start != goal:
@@ -207,13 +207,13 @@ class Graph:
             else:
                 forward_path.append(start.vertex_id)
         # If vertex 2 is repeat vertex add edge from teach path to vertex 2 at end
-        if forward_path[-1] != vertex2:
-            forward_path.append(vertex2)
+        if forward_path[-1] != vertex_id2:
+            forward_path.append(vertex_id2)
 
         # Check other way around loop
-        backward_path = [vertex2]
-        start = self.get_vertex(vertex2)
-        goal = self.get_vertex(vertex1)
+        backward_path = [vertex_id2]
+        start = self.get_vertex(vertex_id2)
+        goal = self.get_vertex(vertex_id1)
         if not goal.teach:
             goal = self.get_vertex(goal.next_id)
         while start != goal:
@@ -224,8 +224,8 @@ class Graph:
             else:
                 backward_path.append(start.vertex_id)
         # If vertex 1 is repeat vertex add edge from teach path to vertex 1 at end
-        if backward_path[-1] != vertex1:
-            backward_path.append(vertex1)
+        if backward_path[-1] != vertex_id1:
+            backward_path.append(vertex_id1)
 
         # Return shorter of the two. Returns boolean to indicate if path is in the forward direction
         if len(forward_path) <= len(backward_path) or not backward_valid and forward_valid:
@@ -238,31 +238,31 @@ class Graph:
             return [], False
 
     # Returns set of vertices within 'radius' edges of 'vertex'
-    def get_topo_neighbours(self, vertex, radius):
+    def get_topo_neighbours(self, vertex_id, radius):
 
-        if self.get_vertex(vertex) is None:
-            print("Vertex {0} does not exist.".format(vertex))
+        if self.get_vertex(vertex_id) is None:
+            print("Vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
             print("Warning: negative radius specified.")
             return set()
 
-        neighbours = {vertex}
+        neighbours = {vertex_id}
         if radius == 0:
             return neighbours
 
         search_radius = 0
 
-        v = self.get_vertex(vertex)
+        v = self.get_vertex(vertex_id)
         if not v.teach:
             neighbours.add(v.next_id)
             left_bound = v.next_id
             right_bound = v.next_id
             search_radius += 1
         else:
-            left_bound = vertex
-            right_bound = vertex
+            left_bound = vertex_id
+            right_bound = vertex_id
 
         while search_radius < radius:
             neighbours.update(m.vertex_id for m in self.matches[left_bound])
@@ -276,18 +276,18 @@ class Graph:
         return neighbours
 
     # Returns set of vertices within 'radius' metres of 'vertex'
-    def get_metric_neighbours(self, vertex, radius):
+    def get_metric_neighbours(self, vertex_id, radius):
 
-        if self.get_vertex(vertex) is None:
-            print("Vertex {0} does not exist.".format(vertex))
+        if self.get_vertex(vertex_id) is None:
+            print("Vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
             print("Warning: negative radius specified.")
             return set()
 
-        neighbours = {vertex}
-        v = self.get_vertex(vertex)
+        neighbours = {vertex_id}
+        v = self.get_vertex(vertex_id)
         if not v.teach:
             teach_v = self.get_vertex(v.next_id)
             teach_T = v.next_transform

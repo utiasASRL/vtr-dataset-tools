@@ -7,7 +7,7 @@ import tools
 def get_run_files(data_dir):
 
     if not os.path.isdir(data_dir):
-        raise Exception("{0} is not a valid directory".format(data_dir))
+        raise Exception("data_dir is not a valid directory")
 
     teach = data_dir + "/run_000000/transforms_temporal.txt"
     if not os.path.isfile(teach):
