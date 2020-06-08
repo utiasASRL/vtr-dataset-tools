@@ -1,3 +1,6 @@
+""" Example of using tools to read transforms from pose graph. Then use transforms
+    to plot path in 2D.
+"""
 import os
 
 import matplotlib
@@ -74,12 +77,4 @@ if __name__=="__main__":
             v_next = (r_ind, v_ind + 1)
 
         # Plot the integrated path
-        plot_path(x, y, r_ind, results_folder)
-
-
-  
-            
-
-    
-    
-    
+        plot_path(x, y, r_ind, results_folder) 

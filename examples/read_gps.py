@@ -1,3 +1,6 @@
+""" Example of using tools to read GPS data from pose graph. Then plot latitude
+    and longitude.
+"""
 import os
 
 import matplotlib
