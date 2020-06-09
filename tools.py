@@ -5,6 +5,26 @@ from transform import Transform
 
 
 class Vertex:
+    """
+    The Vertex object represents a vertex that is part of a pose graph.
+
+    Args:
+        run_id (int): Id of the run the vertex belongs to.
+        pose_id (int): Id of the pose for the vertex.
+        next_run_id (int): Id of the run of the vertex that this vertex is connected to, 
+            either spatially (from repeat to teach) or temporally (one teach vertex to another).
+        next_pose_id (int): Id of the pose of the vertex that this vertex is connected to, 
+            either spatially (from repeat to teach) or temporally (one teach vertex to another).
+        next_transform (Transform): Transform from this to the connected vertex.
+        teach (bool): True if vertex belongs to a teach run, False if repeat run. 
+        prev_run_id (int): Id of the previous consecutive run (optional).
+        prev_pose_id (int): Id of the previous consecutive pose (optional).
+        timestamp (float): timestamp in seconds of the image associated with the vertex (optional). 
+        gps_time (float): timestamp in seconds of the GPS measurement associated with the vertex (optional). 
+        latitude (float): GPS measurement associated with the vertex (optional).
+        longitude (float): GPS measurement associated with the vertex (optional).
+        altitude (float): GPS measurement associated with the vertex (optional).
+    """
     def __init__(self, run_id, pose_id, next_run_id, next_pose_id, next_transform, teach=False, prev_run_id=-1,
                  prev_pose_id=-1, timestamp=None, gps_time=None, latitude=None, longitude=None, altitude=None):
         self.vertex_id = (int(run_id), int(pose_id))
@@ -20,7 +40,18 @@ class Vertex:
 
 
 class Graph:
-    def __init__(self, teach_file, repeat_files=None, im_times=None, gps_files=None, gps_times=None):
+    '''
+    The Graph object represents a pose graph with a teach run and several repeat runs. Each run has 
+    several sequentially connected vertices. Vertices can also be connected between different runs. 
+
+    Args:
+        teach_file (str): Path to file containing temporal transforms for teach run.
+        repeat_files (list of str): Paths to files containing spatial transformations for repeat runs.
+        im_time_files (list of str): Paths to files containing image time stamps for runs.
+        gps_files (list of str): Paths to files contaning gps data for runs.
+        gps_time_files (list of str): Paths to files containing gps time stamps for runs.
+    '''    
+    def __init__(self, teach_file, repeat_files=None, im_time_files=None, gps_files=None, gps_time_files=None):    
         if repeat_files is None:
             repeat_files = []
         if im_times is None:
@@ -50,19 +81,45 @@ class Graph:
         self.add_timestamps(im_times)
         self.add_gps(gps_files, gps_times)
 
-    # Return Vertex in the graph with the given id
     def get_vertex(self, vertex_id):
+        """Returns a vertex in the graph.
+
+        Args:
+            vertex_id (tuple of ints): Id of the graph vertex object. The id is a tuple containing
+                the run id and the the pose id.
+
+        Returns:
+            Vertex: The vertex object.         
+        """
         return self.vertices.get(vertex_id)
 
     def is_vertex(self, vertex_id):
+        """Returns whether a vertex object corresponding to the given vertex id exists in the graph.
+
+        Args:
+            vertex_id (tuple of ints): Id of the graph vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+
+        Returns:
+            bool: True if vertex exists in graph, False otherwise.         
+        """
         if vertex_id in self.vertices:
             return True
         else:
             return False
 
-    # Add new vertex to graph
     def add_vertex(self, run_id, pose_id, next_run_id, next_pose_id, next_transform, teach=False):
+        """Adds a new vertex to the graph.
 
+        Args:
+            run_id (int): Id of the run the vertex belongs to.
+            pose_id (int): Id of the pose for the vertex.
+            next_run_id (int): Id of the run of the vertex that this vertex is connected to, 
+                either spatially (from repeat to teach) or temporally (one teach vertex to another).
+            next_pose_id (int): Id of the pose of the vertex that this vertex is connected to, 
+                either spatially (from repeat to teach) or temporally (one teach vertex to another).
+            next_transform (Transform): Transform from this to the connected vertex. 
+        """
         v = Vertex(run_id, pose_id, next_run_id, next_pose_id, next_transform, teach)
 
         # Check if vertex already exists
@@ -79,34 +136,50 @@ class Graph:
             self.matches[v.next_id].append(v)
             self.vertices[v.vertex_id] = v
         else:
-            print("Teach vertex {0} not found in graph so vertex {1} was not added.".format(v.next_id, v.vertex_id))
+            print("Warning: teach vertex {0} not found in graph so vertex {1} was not added.".format(v.next_id, v.vertex_id))
 
-    # Iterate through teach vertices to add previous indices
     def add_prev_ids(self):
+        """Iterates over all the teach vertices and adds the index of the previous vertex as an 
+           attribute to each one.
+        """
         for v_id in self.vertices:
             v = self.get_vertex(v_id)
             if v.teach and v.next_id in self.vertices:
                 self.vertices[v.next_id].prev_id = v_id
 
-    # Add new repeat run to graph
     def add_run(self, run_file):
+        """Add a new repeat run to the graph.
+
+        Args:
+            run_file (str): Path to file containing spatial transformations for the repeat run.
+        
+        """
         transforms_spatial = np.loadtxt(run_file, delimiter=",")
         for row in transforms_spatial:
             transform = Transform(np.array([row[4:7], row[8:11], row[12:15]]), np.array([row[7], row[11], row[15]]))
             self.add_vertex(row[0], row[1], row[2], row[3], transform, False)
 
-    # Add image timestamps to each vertex
-    def add_timestamps(self, time_files):
-        for run in time_files:
-            run_times = np.loadtxt(time_files[run], delimiter=",")
+    def add_timestamps(self, im_time_files):
+        """Add image timestamps to vertices.
+
+        Args:
+            im_time_files (list of str): Paths to files containing image time stamps for runs.            
+        """
+        for run in im_time_files:
+            run_times = np.loadtxt(im_time_files[run], delimiter=",")
             for row in run_times:
                 if (run, int(row[0])) in self.vertices:
                     self.vertices[(run, row[0])].timestamp = float(row[1]) * 10**-9
                 else:
                     print("Warning: attempted to add timestamp for vertex ({0}, {1}) not in graph.".format(run, int(row[0])))
 
-    # Add associated GPS measurement and its timestamp to vertices where available
-    def add_gps(self, gps_files, gps_times):
+    def add_gps(self, gps_files, gps_time_files):
+        """Add GPS measurements and the associated timestamps to vertices.
+
+        Args:
+            gps_files (list of str): Paths to files contaning gps data for runs.
+            gps_time_files (list of str): Paths to files containing gps time stamps for runs.            
+        """
         for run in gps_files:
             run_times = np.loadtxt(gps_files[run], delimiter=",")
             for row in run_times:
@@ -117,14 +190,24 @@ class Graph:
                 else:
                     print("Warning: attempted to add GPS data for vertex ({0}, {1}) not in graph.".format(run, int(row[1])))
 
-        for run in gps_times:
-            run_times = np.loadtxt(gps_times[run], delimiter=",")
+        for run in gps_time_files:
+            run_times = np.loadtxt(gps_time_files[run], delimiter=",")
             for row in run_times:
                 if (run, int(row[0])) in self.vertices:
                     self.vertices[(run, row[0])].gps_time = float(row[1]) * 10**-9
 
-    # Returns a subgraph made from the teach vertices between (teach_id, start) and (teach_id, end)
     def get_subgraph(self, start, end):
+        """Returns a subgraph made from the teach vertices between (teach_id, start) and (
+           teach_id, end), where teach_id refers to the run id of the teach run.
+
+        Args:
+            start (int): pose id of the vertex that starts the subgraph.
+            end (int): pose id of the vertex that ends the subgraph. 
+
+        Returns:
+            Graph: subgraph made from teach vertices between start and end. Original graph if pose
+                ids do not correspond to existing vertices.           
+        """
         if self.is_vertex((self.teach_id, start)) and self.is_vertex((self.teach_id, end)):
             subgraph = copy.copy(self)
             subgraph.matches = {id: self.matches[id] for id in self.matches if start <= id[1] <= end}
@@ -136,23 +219,43 @@ class Graph:
 
             return subgraph
         else:
-            print("Invalid vertex chosen.")
+            print("Warning: invalid vertex chosen for subgraph, returning original graph.")
             return self
 
-    # Returns number of edges between vertices in pose graph
     def get_topological_dist(self, vertex_id1, vertex_id2):
+        """Returns number of edges between two vertices in the graph.
+
+        Args:
+            vertex_id1 (tuple of ints): Id of the first vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+            vertex_id2 (tuple of ints): Id of the second vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+
+        Returns:
+            int: The number of edges between the two vertices.           
+        """
         path, _ = self.get_path(vertex_id1, vertex_id2)
         return len(path) - 1
 
-    # Returns Transform, T_21
     def get_transform(self, vertex_id1, vertex_id2):
+        """Returns the transform, T_21, from vertex 1 to vertex 2 in the graph.
 
+        Args:
+            vertex_id1 (tuple of ints): Id of the first vertex object. The id is a tuple 
+                containing the run id and the the pose id.
+            vertex_id2 (tuple of ints): Id of the second vertex object. The id is a tuple 
+                containing the run id and the the pose id.
+
+        Returns:
+            Transform: The transform, T_21, from vertex 1 to vertex 2. Identity transform if no 
+                path exists between the vertices.           
+        """
         transform = Transform(np.eye(3), np.zeros((3,)))
 
         path, forward = self.get_path(vertex_id1, vertex_id2)
 
         if len(path) == 0:
-            print("No path found between vertex {0} and vertex {1}.".format(vertex_id1, vertex_id2))
+            print("Warning: no path found between vertex {0} and vertex {1}, returning identity transform.".format(vertex_id1, vertex_id2))
             return transform
         if len(path) == 1:
             return transform
@@ -176,12 +279,24 @@ class Graph:
         else:
             return transform.inv()
 
-    # Returns list of vertices connecting vertex 1 and vertex2
-    # Traverses graph both ways and returns shorter path (topologically)
     def get_path(self, vertex_id1, vertex_id2):
+        """Returns a list of vertices connecting vertex 1 and vertex 2. 
+           Traverses graph both ways and returns shorter path (topologically).
 
+        Args:
+            vertex_id1 (tuple of ints): Id of the first vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+            vertex_id2 (tuple of ints): Id of the second vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+
+        Returns:
+            list of tuples of ints: List of vertex ids of vertices connecting vertex 1 and vertex 2. 
+                List of length one if vertex 1 and 2 are the same. Empty list if no path is found 
+                or if at least one of the vertices does not exist in the graph.
+            bool: True if path is in the forward direction, otherwise False.            
+        """
         if self.get_vertex(vertex_id1) is None or self.get_vertex(vertex_id2) is None:
-            print("Invalid vertex.")
+            print("Warning: invalid vertex.")
             return [], False
 
         # Set to false if can't find path between vertices
@@ -234,14 +349,24 @@ class Graph:
             backward_path.reverse()
             return backward_path, False
         else:
-            print("No path found. Problem with graph.")
+            print("Warning: no path found. Problem with graph.")
             return [], False
 
-    # Returns set of vertices within 'radius' edges of 'vertex'
     def get_topo_neighbours(self, vertex_id, radius):
+        """Returns a set of topological neighbour vertices within radius number of edges of the 
+           given vertex.
 
+        Args:
+            vertex_id (tuple of ints): Id of the first vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+            radius (int): Distance in number of edges used as the search radius.
+
+        Returns:
+            set: Set of vertex ids for neighbour vertices. Set of size 1 if radius is 0. 
+                Empty set if radius is negative or if the given vertex does not exist in the graph.            
+        """
         if self.get_vertex(vertex_id) is None:
-            print("Vertex {0} does not exist.".format(vertex_id))
+            print("Warning: vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
@@ -275,11 +400,20 @@ class Graph:
 
         return neighbours
 
-    # Returns set of vertices within 'radius' metres of 'vertex'
     def get_metric_neighbours(self, vertex_id, radius):
+        """Returns a set of metric neighbour vertices within radius meters of the given vertex.
 
+        Args:
+            vertex_id (tuple of ints): Id of the first vertex object. The id is a tuple containing 
+                the run id and the the pose id.
+            radius (float): Distance in meters used as the search radius.
+
+        Returns:
+            set: Set of vertex ids for neighbour vertices. Empty set if radius is negative 
+                or if the given vertex does not exist in the graph.            
+        """
         if self.get_vertex(vertex_id) is None:
-            print("Vertex {0} does not exist.".format(vertex_id))
+            print("Warning: vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
