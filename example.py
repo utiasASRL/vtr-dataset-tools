@@ -68,11 +68,11 @@ if __name__ == "__main__":
         print("Vertex {0} and vertex {1} are {2} nodes and {3} metres apart.".format(v1, v2, edges_between, round(dist_between, 3)))
 
         r = 1
-        topo_search = g.get_topo_neighbours(v2, r)
+        topo_search = g.get_topo_neighbours(v1, r)
         print("The following vertices are within {0} edges of vertex {1}: {2}".format(r, v1, topo_search))
 
         r = 0.1
-        metric_search = g.get_metric_neighbours(v2, r)
+        metric_search = g.get_metric_neighbours(v1, r)
         print("The following vertices are within {0} metres of vertex {1}: {2}".format(r, v1, metric_search))
 
         print("Image at vertex {0} was captured at {1} UTC.".format(v2, datetime.utcfromtimestamp(g.get_vertex(v2).timestamp)))
