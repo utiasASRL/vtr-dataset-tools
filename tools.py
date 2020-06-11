@@ -54,12 +54,12 @@ class Graph:
     def __init__(self, teach_file, repeat_files=None, im_time_files=None, gps_files=None, gps_time_files=None):    
         if repeat_files is None:
             repeat_files = []
-        if im_times is None:
-            im_times = {}
+        if im_time_files is None:
+            im_time_files = {}
         if gps_files is None:
             gps_files = {}
-        if gps_times is None:
-            gps_times = {}
+        if gps_time_files is None:
+            gps_time_files = {}
 
         # Read teach run transforms from file
         transforms_temporal = np.loadtxt(teach_file, delimiter=",")
@@ -78,8 +78,8 @@ class Graph:
         for run_file in repeat_files:
             self.add_run(run_file)
 
-        self.add_timestamps(im_times)
-        self.add_gps(gps_files, gps_times)
+        self.add_timestamps(im_time_files)
+        self.add_gps(gps_files, gps_time_files)
 
     def get_vertex(self, vertex_id):
         """Returns a vertex in the graph.
@@ -89,7 +89,7 @@ class Graph:
                 the run id and the the pose id.
 
         Returns:
-            Vertex: The vertex object.         
+            Vertex: The vertex object, None if the vertex does not exist.         
         """
         return self.vertices.get(vertex_id)
 
@@ -232,7 +232,7 @@ class Graph:
                 the run id and the the pose id.
 
         Returns:
-            int: The number of edges between the two vertices.           
+            int: The number of edges between the two vertices, -1 if no path exists between them.           
         """
         path, _ = self.get_path(vertex_id1, vertex_id2)
         return len(path) - 1
@@ -296,7 +296,7 @@ class Graph:
             bool: True if path is in the forward direction, otherwise False.            
         """
         if self.get_vertex(vertex_id1) is None or self.get_vertex(vertex_id2) is None:
-            print("Warning: invalid vertex.")
+            print("Warning: no path found. At least one of the vertices are invalid.")
             return [], False
 
         # Set to false if can't find path between vertices
@@ -365,13 +365,12 @@ class Graph:
             set: Set of vertex ids for neighbour vertices. Set of size 1 if radius is 0. 
                 Empty set if radius is negative or if the given vertex does not exist in the graph.            
         """
-        if self.get_vertex(vertex_id) is None:
-            print("Warning: vertex {0} does not exist.".format(vertex_id))
+        if not self.is_vertex(vertex_id):
+            print("Warning: no topo neighbours found. Vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
-            print("Warning: negative radius specified.")
-            return set()
+            raise ValueError("Negative radius specified.")
 
         neighbours = {vertex_id}
         if radius == 0:
@@ -413,13 +412,12 @@ class Graph:
                 or if the given vertex does not exist in the graph.            
         """
         if self.get_vertex(vertex_id) is None:
-            print("Warning: vertex {0} does not exist.".format(vertex_id))
+            print("Warning: no metric neighbours found. Vertex {0} does not exist.".format(vertex_id))
             return set()
 
         if radius < 0:
-            print("Warning: negative radius specified.")
-            return set()
-
+            raise ValueError("Negative radius specified.")
+            
         neighbours = {vertex_id}
         v = self.get_vertex(vertex_id)
         if not v.teach:
