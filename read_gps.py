@@ -81,7 +81,6 @@ if __name__=="__main__":
         
                 pose_id += 1
                 vertex_id = (run_id, pose_id)
-                vertex = g.get_vertex(vertex_id)
 
             # Plot the integrated path
             plot_path(lat, lon, run_id, results_folder)
