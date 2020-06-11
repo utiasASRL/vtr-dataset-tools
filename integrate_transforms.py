@@ -52,10 +52,10 @@ if __name__=="__main__":
     # Iterate over all runs
     for run_id in range(len(repeat_files) + 1):
         
-	x, y = [], []
+        x, y = [], []
         T_curr_start = Transform(np.eye(3), np.zeros((3,))) 
  
-	pose_id = 0
+        pose_id = 0
         vertex_id_curr = (run_id, pose_id)
         vertex_id_next = (run_id, pose_id + 1)
         

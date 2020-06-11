@@ -411,7 +411,7 @@ class Graph:
             set: Set of vertex ids for neighbour vertices. Empty set if radius is negative 
                 or if the given vertex does not exist in the graph.            
         """
-        if self.get_vertex(vertex_id) is None:
+        if not self.is_vertex(vertex_id):
             print("Warning: no metric neighbours found. Vertex {0} does not exist.".format(vertex_id))
             return set()
 
