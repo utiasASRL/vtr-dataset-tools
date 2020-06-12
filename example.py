@@ -67,7 +67,10 @@ if __name__ == "__main__":
         dist_between = np.linalg.norm(T_v2_v1.r_ab_inb)
         print("Vertex {0} and vertex {1} are {2} nodes and {3} metres apart.".format(v1, v2, edges_between, round(dist_between, 3)))
 
-        topo_search = g.get_topo_neighbours(v1, 1)
+        r = 1
+        topo_search = g.get_topo_neighbours(v1, r)
+        print("The following vertices are within {0} edges of vertex {1}: {2}".format(r, v1, topo_search))
+
         r = 0.1
         metric_search = g.get_metric_neighbours(v1, r)
         print("The following vertices are within {0} metres of vertex {1}: {2}".format(r, v1, metric_search))
