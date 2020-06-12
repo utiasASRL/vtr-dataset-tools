@@ -17,13 +17,13 @@ The figure below illustrates the pose graph with dots representing vertices and 
 
 To start, download the teach run folder and as many repeat runs as you would like to work with.
 Change the `data_folder` path in `example.py` to your top-level directory containing the run_000xxx folders.
-Run the `example.py` script. This scrip shows example usage of the key methods provided in these tools. 
+Run the `example.py` script. This script shows example usage of the key methods provided in these tools. 
 
 **Note**: your data folder must contain run_000000 (the Teach run) from one of the two datasets. All other runs are localized to this run.
 
 The `integrate_transforms.py` script provides an example of iterating through the vertices of several repeat runs in the pose graph, extracting the relative transform between consecutive vertices in the run, integrating the pose and plotting the resulting path in the 2D plane.
 
-Finally, `read_gps.py` shows an example of iterating through the vertices of several runs, extracting the GPS data for the vertices and the plotting latitude vs. longitude. 
+Finally, `read_gps.py` shows an example of iterating through the vertices of several runs, extracting the GPS data for the vertices and plotting latitude vs. longitude. 
 
 ### Key Tools
 
